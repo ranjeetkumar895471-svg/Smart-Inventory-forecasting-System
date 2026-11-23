@@ -1,0 +1,340 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny all unspecified paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidSymbolId(sym) {
+      return sym is string && sym.size() >= 1 && sym.size() <= 24 && sym.matches('^[A-Z0-9.\\-]+$');
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'ranjeetkumar895471@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isCurrency(val) {
+      return val is string && (val == 'INR' || val == 'USD');
+    }
+
+    function isRiskLevel(val) {
+      return val is string && (val == 'Low' || val == 'Medium' || val == 'High');
+    }
+
+    // Entity validation helpers
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'preferredCurrency', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'preferredCurrency', 'status', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && (data.role == 'investor' || data.role == 'admin')
+        && isCurrency(data.preferredCurrency)
+        && (data.status == 'active' || data.status == 'suspended')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'email', 'grantedBy', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'grantedBy', 'createdAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.grantedBy is string && data.grantedBy.size() >= 1 && data.grantedBy.size() <= 128
+        && data.createdAt is timestamp;
+    }
+
+    function isValidPortfolioHolding(data) {
+      return data.keys().hasAll(['id', 'userId', 'symbol', 'companyName', 'exchange', 'sector', 'currency', 'quantity', 'avgBuyPrice', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'userId', 'symbol', 'companyName', 'exchange', 'sector', 'currency', 'quantity', 'avgBuyPrice', 'notes', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.userId)
+        && isValidSymbolId(data.symbol)
+        && data.companyName is string && data.companyName.size() >= 1 && data.companyName.size() <= 120
+        && data.exchange is string && data.exchange.size() >= 1 && data.exchange.size() <= 24
+        && data.sector is string && data.sector.size() >= 1 && data.sector.size() <= 64
+        && isCurrency(data.currency)
+        && data.quantity is number && data.quantity > 0
+        && data.avgBuyPrice is number && data.avgBuyPrice > 0
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 400))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWatchlistItem(data) {
+      return data.keys().hasAll(['id', 'userId', 'symbol', 'companyName', 'exchange', 'sector', 'currency', 'createdAt'])
+        && data.keys().hasOnly(['id', 'userId', 'symbol', 'companyName', 'exchange', 'sector', 'currency', 'targetPrice', 'createdAt'])
+        && isValidId(data.id)
+        && isValidId(data.userId)
+        && isValidSymbolId(data.symbol)
+        && data.companyName is string && data.companyName.size() >= 1 && data.companyName.size() <= 120
+        && data.exchange is string && data.exchange.size() >= 1 && data.exchange.size() <= 24
+        && data.sector is string && data.sector.size() >= 1 && data.sector.size() <= 64
+        && isCurrency(data.currency)
+        && (!('targetPrice' in data) || (data.targetPrice is number && data.targetPrice >= 0))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidStockCatalogItem(data) {
+      return data.keys().hasAll(['symbol', 'companyName', 'exchange', 'sector', 'currency', 'marketCapTier', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['symbol', 'companyName', 'exchange', 'sector', 'currency', 'marketCapTier', 'updatedBy', 'updatedAt'])
+        && isValidSymbolId(data.symbol)
+        && data.companyName is string && data.companyName.size() >= 1 && data.companyName.size() <= 120
+        && data.exchange is string && data.exchange.size() >= 1 && data.exchange.size() <= 24
+        && data.sector is string && data.sector.size() >= 1 && data.sector.size() <= 64
+        && isCurrency(data.currency)
+        && (data.marketCapTier == 'Large Cap' || data.marketCapTier == 'Mid Cap' || data.marketCapTier == 'Small Cap')
+        && data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidHistoricalPriceSnapshot(data) {
+      return data.keys().hasAll(['id', 'symbol', 'exchange', 'dataSource', 'pointsCount', 'lastDate', 'latestClose', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'symbol', 'exchange', 'dataSource', 'pointsCount', 'lastDate', 'latestClose', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidSymbolId(data.symbol)
+        && data.exchange is string && data.exchange.size() >= 1 && data.exchange.size() <= 24
+        && data.dataSource is string && data.dataSource.size() >= 1 && data.dataSource.size() <= 64
+        && data.pointsCount is int && data.pointsCount >= 0
+        && data.lastDate is string && data.lastDate.size() >= 4 && data.lastDate.size() <= 32
+        && data.latestClose is number && data.latestClose >= 0
+        && data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidForecastRecord(data) {
+      return data.keys().hasAll(['id', 'userId', 'symbol', 'horizonDays', 'modelName', 'currentPrice', 'predictedPrice', 'lower95', 'upper95', 'riskLevel', 'mape', 'directionalAccuracy', 'isDemo', 'createdAt'])
+        && data.keys().hasOnly(['id', 'userId', 'symbol', 'horizonDays', 'modelName', 'currentPrice', 'predictedPrice', 'lower95', 'upper95', 'riskLevel', 'mape', 'directionalAccuracy', 'isDemo', 'createdAt'])
+        && isValidId(data.id)
+        && isValidId(data.userId)
+        && isValidSymbolId(data.symbol)
+        && data.horizonDays is int && (data.horizonDays == 1 || data.horizonDays == 7 || data.horizonDays == 30)
+        && data.modelName is string && data.modelName.size() >= 1 && data.modelName.size() <= 80
+        && data.currentPrice is number && data.currentPrice > 0
+        && data.predictedPrice is number && data.predictedPrice > 0
+        && data.lower95 is number && data.lower95 > 0
+        && data.upper95 is number && data.upper95 >= data.lower95
+        && isRiskLevel(data.riskLevel)
+        && data.mape is number && data.mape >= 0
+        && data.directionalAccuracy is number && data.directionalAccuracy >= 0 && data.directionalAccuracy <= 100
+        && data.isDemo is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidResearchReport(data) {
+      return data.keys().hasAll(['id', 'userId', 'symbol', 'title', 'reportType', 'horizonDays', 'riskLevel', 'summary', 'createdAt'])
+        && data.keys().hasOnly(['id', 'userId', 'symbol', 'title', 'reportType', 'horizonDays', 'riskLevel', 'summary', 'createdAt'])
+        && isValidId(data.id)
+        && isValidId(data.userId)
+        && isValidSymbolId(data.symbol)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && (data.reportType == 'Equity Forecast' || data.reportType == 'Portfolio Summary' || data.reportType == 'Risk & Technical')
+        && data.horizonDays is int && (data.horizonDays == 1 || data.horizonDays == 7 || data.horizonDays == 30)
+        && isRiskLevel(data.riskLevel)
+        && data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 1500
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['id', 'userId', 'userEmail', 'action', 'resource', 'details', 'createdAt'])
+        && data.keys().hasOnly(['id', 'userId', 'userEmail', 'action', 'resource', 'details', 'createdAt'])
+        && isValidId(data.id)
+        && isValidId(data.userId)
+        && data.userEmail is string && data.userEmail.size() >= 3 && data.userEmail.size() <= 200
+        && data.action is string && data.action.size() >= 1 && data.action.size() <= 80
+        && data.resource is string && data.resource.size() >= 1 && data.resource.size() <= 120
+        && data.details is string && data.details.size() >= 1 && data.details.size() <= 500
+        && data.createdAt is timestamp;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidUser(incoming())
+        && request.auth.uid == userId
+        && incoming().uid == userId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && incoming().status == 'active'
+        && (incoming().role == 'investor' || isBootstrappedAdmin());
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'status', 'displayName', 'preferredCurrency', 'updatedAt'])) ||
+          (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'preferredCurrency', 'updatedAt']))
+        );
+      allow delete: if isAdmin() && isValidId(userId) && request.auth.uid != userId;
+    }
+
+    // Admins collection
+    match /admins/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isAdmin()
+        && isValidId(userId)
+        && isValidAdminRecord(incoming())
+        && incoming().uid == userId
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(userId) && request.auth.uid != userId;
+    }
+
+    // Portfolios collection
+    match /portfolios/{holdingId} {
+      allow get: if isVerifiedUser() && isValidId(holdingId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(holdingId)
+        && isValidPortfolioHolding(incoming())
+        && incoming().id == holdingId
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(holdingId)
+        && isValidPortfolioHolding(incoming())
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['quantity', 'avgBuyPrice', 'notes', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isVerifiedUser() && isValidId(holdingId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // Watchlists collection
+    match /watchlists/{itemId} {
+      allow get: if isVerifiedUser() && isValidId(itemId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(itemId)
+        && isValidWatchlistItem(incoming())
+        && incoming().id == itemId
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(itemId)
+        && isValidWatchlistItem(incoming())
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && existing().userId == request.auth.uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['targetPrice']);
+      allow delete: if isVerifiedUser() && isValidId(itemId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // Stocks catalog collection
+    match /stocks/{symbol} {
+      allow get: if isVerifiedUser() && isValidSymbolId(symbol);
+      allow list: if isVerifiedUser();
+      allow create: if isAdmin()
+        && isValidSymbolId(symbol)
+        && isValidStockCatalogItem(incoming())
+        && incoming().symbol == symbol
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidSymbolId(symbol)
+        && isValidStockCatalogItem(incoming())
+        && incoming().symbol == existing().symbol
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['companyName', 'exchange', 'sector', 'currency', 'marketCapTier', 'updatedBy', 'updatedAt']);
+      allow delete: if isAdmin() && isValidSymbolId(symbol);
+    }
+
+    // Historical Prices snapshots collection
+    match /historicalPrices/{priceId} {
+      allow get: if isVerifiedUser() && isValidId(priceId);
+      allow list: if isVerifiedUser();
+      allow create: if isAdmin()
+        && isValidId(priceId)
+        && isValidHistoricalPriceSnapshot(incoming())
+        && incoming().id == priceId
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(priceId)
+        && isValidHistoricalPriceSnapshot(incoming())
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['dataSource', 'pointsCount', 'lastDate', 'latestClose', 'updatedBy', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(priceId);
+    }
+
+    // Forecasts collection
+    match /forecasts/{forecastId} {
+      allow get: if isVerifiedUser() && isValidId(forecastId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(forecastId)
+        && isValidForecastRecord(incoming())
+        && incoming().id == forecastId
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(forecastId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // Research Reports collection
+    match /reports/{reportId} {
+      allow get: if isVerifiedUser() && isValidId(reportId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(reportId)
+        && isValidResearchReport(incoming())
+        && incoming().id == reportId
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(reportId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // Audit Logs collection (immutable)
+    match /auditLogs/{logId} {
+      allow get: if isVerifiedUser() && isValidId(logId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(logId)
+        && isValidAuditLog(incoming())
+        && incoming().id == logId
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

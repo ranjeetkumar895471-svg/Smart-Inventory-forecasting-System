@@ -1,0 +1,485 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Investor or administrator account profile.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "enum": ["investor", "admin"]
+        },
+        "preferredCurrency": {
+          "type": "string",
+          "enum": ["INR", "USD"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "suspended"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "displayName", "role", "preferredCurrency", "status", "createdAt", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator grant record.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "grantedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "grantedBy", "createdAt"]
+    },
+    "PortfolioHolding": {
+      "title": "PortfolioHolding",
+      "description": "An investor equity position tracked in their portfolio.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24,
+          "pattern": "^[A-Z0-9.\\-]+$"
+        },
+        "companyName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "exchange": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "sector": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["INR", "USD"]
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "avgBuyPrice": {
+          "type": "number"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "symbol", "companyName", "exchange", "sector", "currency", "quantity", "avgBuyPrice", "createdAt", "updatedAt"]
+    },
+    "WatchlistItem": {
+      "title": "WatchlistItem",
+      "description": "Tracked equity symbol and optional target price threshold.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24,
+          "pattern": "^[A-Z0-9.\\-]+$"
+        },
+        "companyName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "exchange": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "sector": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["INR", "USD"]
+        },
+        "targetPrice": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "symbol", "companyName", "exchange", "sector", "currency", "createdAt"]
+    },
+    "StockCatalogItem": {
+      "title": "StockCatalogItem",
+      "description": "Tracked stock reference metadata managed by administrators.",
+      "type": "object",
+      "properties": {
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24,
+          "pattern": "^[A-Z0-9.\\-]+$"
+        },
+        "companyName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "exchange": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "sector": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["INR", "USD"]
+        },
+        "marketCapTier": {
+          "type": "string",
+          "enum": ["Large Cap", "Mid Cap", "Small Cap"]
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["symbol", "companyName", "exchange", "sector", "currency", "marketCapTier", "updatedBy", "updatedAt"]
+    },
+    "HistoricalPriceSnapshot": {
+      "title": "HistoricalPriceSnapshot",
+      "description": "Snapshot metadata for historical market datasets.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24,
+          "pattern": "^[A-Z0-9.\\-]+$"
+        },
+        "exchange": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "dataSource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "pointsCount": {
+          "type": "integer"
+        },
+        "lastDate": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 32
+        },
+        "latestClose": {
+          "type": "number"
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "symbol", "exchange", "dataSource", "pointsCount", "lastDate", "latestClose", "updatedBy", "updatedAt"]
+    },
+    "ForecastRecord": {
+      "title": "ForecastRecord",
+      "description": "Saved time-series forecasting run with confidence bounds and backtest metrics.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24,
+          "pattern": "^[A-Z0-9.\\-]+$"
+        },
+        "horizonDays": {
+          "type": "integer"
+        },
+        "modelName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "currentPrice": {
+          "type": "number"
+        },
+        "predictedPrice": {
+          "type": "number"
+        },
+        "lower95": {
+          "type": "number"
+        },
+        "upper95": {
+          "type": "number"
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": ["Low", "Medium", "High"]
+        },
+        "mape": {
+          "type": "number"
+        },
+        "directionalAccuracy": {
+          "type": "number"
+        },
+        "isDemo": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "symbol", "horizonDays", "modelName", "currentPrice", "predictedPrice", "lower95", "upper95", "riskLevel", "mape", "directionalAccuracy", "isDemo", "createdAt"]
+    },
+    "ResearchReport": {
+      "title": "ResearchReport",
+      "description": "Metadata for an exported investment analytics PDF report.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24,
+          "pattern": "^[A-Z0-9.\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "reportType": {
+          "type": "string",
+          "enum": ["Equity Forecast", "Portfolio Summary", "Risk & Technical"]
+        },
+        "horizonDays": {
+          "type": "integer"
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": ["Low", "Medium", "High"]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "symbol", "title", "reportType", "horizonDays", "riskLevel", "summary", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable activity and security audit log entry.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userEmail": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "resource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "details": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "userEmail", "action", "resource", "details", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile documents isolated to owner and admins."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Admin role allowlist documents."
+    },
+    "/portfolios/{holdingId}": {
+      "schema": { "$ref": "#/entities/PortfolioHolding" },
+      "description": "Investor portfolio holdings owned by userId."
+    },
+    "/watchlists/{itemId}": {
+      "schema": { "$ref": "#/entities/WatchlistItem" },
+      "description": "Investor watchlist items owned by userId."
+    },
+    "/stocks/{symbol}": {
+      "schema": { "$ref": "#/entities/StockCatalogItem" },
+      "description": "Master stock metadata catalog."
+    },
+    "/historicalPrices/{priceId}": {
+      "schema": { "$ref": "#/entities/HistoricalPriceSnapshot" },
+      "description": "Historical market price dataset snapshots."
+    },
+    "/forecasts/{forecastId}": {
+      "schema": { "$ref": "#/entities/ForecastRecord" },
+      "description": "Saved time-series forecasting results owned by userId."
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/ResearchReport" },
+      "description": "Generated research report metadata owned by userId."
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable user and admin activity logs."
+    }
+  }
+}
